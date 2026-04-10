@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import logging
-import sys
 import time
 
 from lerobot.motors import Motor, MotorCalibration, MotorNormMode
@@ -85,9 +84,9 @@ class SOLeader(Teleoperator):
     def calibrate(self) -> None:
         if self.calibration:
             # Calibration file exists, ask user whether to use it or run new calibration
-            print(f"\nPress ENTER to use provided calibration file associated with the id {self.id},")
-            print("or type 'c' and press ENTER to run calibration: ", end="", flush=True)
-            user_input = sys.stdin.readline()
+            user_input = input(
+                f"\nPress ENTER to use provided calibration file associated with the id {self.id}, or type 'c' and press ENTER to run calibration: "
+            )
             if user_input.strip().lower() != "c":
                 logger.info(f"Writing calibration file associated with the id {self.id} to the motors")
                 self.bus.write_calibration(self.calibration)
@@ -98,8 +97,7 @@ class SOLeader(Teleoperator):
         for motor in self.bus.motors:
             self.bus.write("Operating_Mode", motor, OperatingMode.POSITION.value)
 
-        print(f"\nMove {self} to the middle of its range of motion and press ENTER....")
-        sys.stdin.readline()
+        input(f"\nMove {self} to the middle of its range of motion and press ENTER....")
         homing_offsets = self.bus.set_half_turn_homings()
 
         full_turn_motor = "wrist_roll"
