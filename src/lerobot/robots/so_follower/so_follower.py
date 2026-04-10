@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import logging
+import sys
 import time
 from functools import cached_property
 
@@ -111,9 +112,9 @@ class SOFollower(Robot):
     def calibrate(self) -> None:
         if self.calibration:
             # Calibration file exists, ask user whether to use it or run new calibration
-            user_input = input(
-                f"\nPress ENTER to use provided calibration file associated with the id {self.id}, or type 'c' and press ENTER to run calibration: "
-            )
+            print(f"\nPress ENTER to use provided calibration file associated with the id {self.id},")
+            print("or type 'c' and press ENTER to run calibration: ", end="", flush=True)
+            user_input = sys.stdin.readline()
             if user_input.strip().lower() != "c":
                 logger.info(f"Writing calibration file associated with the id {self.id} to the motors")
                 self.bus.write_calibration(self.calibration)
@@ -124,7 +125,8 @@ class SOFollower(Robot):
         for motor in self.bus.motors:
             self.bus.write("Operating_Mode", motor, OperatingMode.POSITION.value)
 
-        input(f"\nMove {self} to the middle of its range of motion and press ENTER....")
+        print(f"\nMove {self} to the middle of its range of motion and press ENTER....")
+        sys.stdin.readline()
         homing_offsets = self.bus.set_half_turn_homings()
 
         # Attempt to call record_ranges_of_motion with a reduced motor set when appropriate.
