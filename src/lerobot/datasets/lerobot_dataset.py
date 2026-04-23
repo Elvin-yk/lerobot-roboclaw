@@ -43,6 +43,21 @@ from lerobot.utils.constants import HF_LEROBOT_HUB_CACHE
 logger = logging.getLogger(__name__)
 
 
+def _flatten_calibration_snapshot(calibration_dir: Path) -> None:
+    time_fpath = calibration_dir / "time.txt"
+    for line in time_fpath.read_text().splitlines():
+        arm_name, sep, timestamp = line.partition(":")
+        if not sep:
+            raise ValueError(f"Invalid calibration timestamp entry: {line}")
+        arm_name = arm_name.strip()
+        timestamp = timestamp.strip()
+        source = calibration_dir / arm_name / f"{arm_name}.json"
+        target = calibration_dir / f"{arm_name}-{timestamp}.json"
+        source.rename(target)
+        shutil.rmtree(calibration_dir / arm_name)
+    time_fpath.unlink()
+
+
 class LeRobotDataset(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -677,6 +692,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
         if calibration_dst.exists():
             shutil.rmtree(calibration_dst)
         shutil.copytree(obj.meta.root.parents[2] / "calibration", calibration_dst)
+        _flatten_calibration_snapshot(calibration_dst)
         obj.repo_id = obj.meta.repo_id
         obj._requested_root = obj.meta.root
         obj.root = obj.meta.root

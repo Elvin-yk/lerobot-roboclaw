@@ -14,6 +14,7 @@
 
 import abc
 import builtins
+from datetime import datetime
 from pathlib import Path
 
 import draccus
@@ -23,6 +24,27 @@ from lerobot.types import RobotAction, RobotObservation
 from lerobot.utils.constants import HF_LEROBOT_CALIBRATION, ROBOTS
 
 from .config import RobotConfig
+
+
+def _record_calibration_timestamp(calibration_fpath: Path) -> None:
+    arm_name = calibration_fpath.stem
+    time_fpath = calibration_fpath.parent.parent / "time.txt"
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    lines = time_fpath.read_text().splitlines() if time_fpath.exists() else []
+    entry = f"{arm_name}: {timestamp}"
+    updated = False
+    for idx, line in enumerate(lines):
+        name, sep, _ = line.partition(":")
+        if sep and name.strip() == arm_name:
+            lines[idx] = entry
+            updated = True
+            break
+
+    if not updated:
+        lines.append(entry)
+
+    time_fpath.write_text("\n".join(lines) + "\n")
 
 
 # TODO(aliberts): action/obs typing such as Generic[ObsType, ActType] similar to gym.Env ?
@@ -169,6 +191,7 @@ class Robot(abc.ABC):
         fpath = self.calibration_fpath if fpath is None else fpath
         with open(fpath, "w") as f, draccus.config_type("json"):
             draccus.dump(self.calibration, f, indent=4)
+        _record_calibration_timestamp(fpath)
 
     @abc.abstractmethod
     def configure(self) -> None:
