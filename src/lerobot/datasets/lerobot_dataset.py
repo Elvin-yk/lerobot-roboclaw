@@ -15,6 +15,7 @@
 # limitations under the License.
 import contextlib
 import logging
+import shutil
 from collections.abc import Callable
 from pathlib import Path
 
@@ -672,6 +673,10 @@ class LeRobotDataset(torch.utils.data.Dataset):
             use_videos=use_videos,
             metadata_buffer_size=metadata_buffer_size,
         )
+        calibration_dst = obj.meta.root / "calibration"
+        if calibration_dst.exists():
+            shutil.rmtree(calibration_dst)
+        shutil.copytree(obj.meta.root.parents[2] / "calibration", calibration_dst)
         obj.repo_id = obj.meta.repo_id
         obj._requested_root = obj.meta.root
         obj.root = obj.meta.root
