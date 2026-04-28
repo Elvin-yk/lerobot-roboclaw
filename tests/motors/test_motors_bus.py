@@ -20,6 +20,7 @@ from unittest.mock import patch
 import pytest
 
 from lerobot.motors.motors_bus import (
+    DEFAULT_PRESENT_POSITION_SYNC_READ_RETRY,
     Motor,
     MotorNormMode,
     assert_same_address,
@@ -192,6 +193,7 @@ def test_sync_read_by_str(data_name, id_, value, dummy_motors):
     bus.connect(handshake=False)
     addr, length = DUMMY_CTRL_TABLE_2[data_name]
     ids = [id_]
+    expected_num_retry = DEFAULT_PRESENT_POSITION_SYNC_READ_RETRY if data_name == "Present_Position" else 0
     expected_value = {f"dummy_{id_}": value}
 
     with (
@@ -206,9 +208,9 @@ def test_sync_read_by_str(data_name, id_, value, dummy_motors):
         addr,
         length,
         ids,
-        num_retry=0,
+        num_retry=expected_num_retry,
         raise_on_error=True,
-        err_msg=f"Failed to sync read '{data_name}' on {ids=} after 1 tries.",
+        err_msg=f"Failed to sync read '{data_name}' on {ids=} after {expected_num_retry + 1} tries.",
     )
     mock__decode_sign.assert_called_once_with(data_name, {id_: value})
     if data_name in bus.normalized_data:
@@ -229,6 +231,7 @@ def test_sync_read_by_list(data_name, ids_values, dummy_motors):
     bus.connect(handshake=False)
     addr, length = DUMMY_CTRL_TABLE_2[data_name]
     ids = list(ids_values)
+    expected_num_retry = DEFAULT_PRESENT_POSITION_SYNC_READ_RETRY if data_name == "Present_Position" else 0
     expected_values = {f"dummy_{id_}": val for id_, val in ids_values.items()}
 
     with (
@@ -243,9 +246,9 @@ def test_sync_read_by_list(data_name, ids_values, dummy_motors):
         addr,
         length,
         ids,
-        num_retry=0,
+        num_retry=expected_num_retry,
         raise_on_error=True,
-        err_msg=f"Failed to sync read '{data_name}' on {ids=} after 1 tries.",
+        err_msg=f"Failed to sync read '{data_name}' on {ids=} after {expected_num_retry + 1} tries.",
     )
     mock__decode_sign.assert_called_once_with(data_name, ids_values)
     if data_name in bus.normalized_data:
@@ -266,6 +269,7 @@ def test_sync_read_by_none(data_name, ids_values, dummy_motors):
     bus.connect(handshake=False)
     addr, length = DUMMY_CTRL_TABLE_2[data_name]
     ids = list(ids_values)
+    expected_num_retry = DEFAULT_PRESENT_POSITION_SYNC_READ_RETRY if data_name == "Present_Position" else 0
     expected_values = {f"dummy_{id_}": val for id_, val in ids_values.items()}
 
     with (
@@ -280,13 +284,39 @@ def test_sync_read_by_none(data_name, ids_values, dummy_motors):
         addr,
         length,
         ids,
-        num_retry=0,
+        num_retry=expected_num_retry,
         raise_on_error=True,
-        err_msg=f"Failed to sync read '{data_name}' on {ids=} after 1 tries.",
+        err_msg=f"Failed to sync read '{data_name}' on {ids=} after {expected_num_retry + 1} tries.",
     )
     mock__decode_sign.assert_called_once_with(data_name, ids_values)
     if data_name in bus.normalized_data:
         mock__normalize.assert_called_once_with(ids_values)
+
+
+def test_sync_read_present_position_respects_higher_num_retry(dummy_motors):
+    bus = MockMotorsBus("/dev/dummy-port", dummy_motors)
+    bus.connect(handshake=False)
+    data_name = "Present_Position"
+    addr, length = DUMMY_CTRL_TABLE_2[data_name]
+    ids_values = {1: 1337, 2: 42, 3: 4016}
+    ids = list(ids_values)
+    num_retry = DEFAULT_PRESENT_POSITION_SYNC_READ_RETRY + 2
+
+    with (
+        patch.object(MockMotorsBus, "_sync_read", return_value=(ids_values, 0)) as mock__sync_read,
+        patch.object(MockMotorsBus, "_decode_sign", return_value=ids_values),
+        patch.object(MockMotorsBus, "_normalize", return_value=ids_values),
+    ):
+        bus.sync_read(data_name, num_retry=num_retry)
+
+    mock__sync_read.assert_called_once_with(
+        addr,
+        length,
+        ids,
+        num_retry=num_retry,
+        raise_on_error=True,
+        err_msg=f"Failed to sync read '{data_name}' on {ids=} after {num_retry + 1} tries.",
+    )
 
 
 @pytest.mark.parametrize(

@@ -42,6 +42,7 @@ type NameOrID = str | int
 type Value = int | float
 
 logger = logging.getLogger(__name__)
+DEFAULT_PRESENT_POSITION_SYNC_READ_RETRY = 3
 
 
 class MotorsBusBase(abc.ABC):
@@ -1140,6 +1141,9 @@ class SerialMotorsBus(MotorsBusBase):
 
         model = next(iter(models))
         addr, length = get_address(self.model_ctrl_table, model, data_name)
+
+        if data_name == "Present_Position":
+            num_retry = max(num_retry, DEFAULT_PRESENT_POSITION_SYNC_READ_RETRY)
 
         err_msg = f"Failed to sync read '{data_name}' on {ids=} after {num_retry + 1} tries."
         raw_ids_values, _ = self._sync_read(
