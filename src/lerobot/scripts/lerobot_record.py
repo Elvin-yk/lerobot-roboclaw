@@ -282,6 +282,26 @@ class RecordConfig:
 """
 
 
+def _consume_loop_exit(events: dict, is_reset_loop: bool) -> bool:
+    if events["stop_recording"] or events["rerecord_episode"]:
+        events["exit_early"] = False
+        events["skip_reset"] = False
+        return True
+
+    if is_reset_loop:
+        if events["skip_reset"]:
+            events["skip_reset"] = False
+            return True
+        events["exit_early"] = False
+        return False
+
+    if events["exit_early"]:
+        events["exit_early"] = False
+        return True
+    events["skip_reset"] = False
+    return False
+
+
 @safe_stop_image_writer
 def record_loop(
     robot: Robot,
@@ -354,11 +374,11 @@ def record_loop(
     no_action_count = 0
     timestamp = 0
     start_episode_t = time.perf_counter()
+    is_reset_loop = dataset is None
     while timestamp < control_time_s:
         start_loop_t = time.perf_counter()
 
-        if events["exit_early"]:
-            events["exit_early"] = False
+        if _consume_loop_exit(events, is_reset_loop):
             break
 
         # Get robot observation
@@ -631,6 +651,7 @@ def record(cfg: RecordConfig) -> LeRobotDataset:
                     log_say("Re-record episode", cfg.play_sounds)
                     events["rerecord_episode"] = False
                     events["exit_early"] = False
+                    events["skip_reset"] = False
                     dataset.clear_episode_buffer()
                     continue
 
