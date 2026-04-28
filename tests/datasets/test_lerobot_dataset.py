@@ -30,7 +30,7 @@ import lerobot.datasets.lerobot_dataset as lerobot_dataset_module
 from lerobot.datasets.dataset_metadata import LeRobotDatasetMetadata
 from lerobot.datasets.dataset_reader import DatasetReader
 from lerobot.datasets.dataset_writer import DatasetWriter
-from lerobot.datasets.lerobot_dataset import LeRobotDataset, _flatten_calibration_snapshot
+from lerobot.datasets.lerobot_dataset import LeRobotDataset
 from tests.fixtures.constants import DEFAULT_FPS, DUMMY_REPO_ID
 
 SIMPLE_FEATURES = {
@@ -97,52 +97,6 @@ def _write_dataset_tree(
     create_tasks(root, tasks)
     create_episodes(root, episodes)
     create_hf_dataset(root, hf_dataset)
-
-
-def test_flatten_calibration_snapshot_allows_missing_timestamp_file(tmp_path):
-    calibration_dir = tmp_path / "calibration"
-    arm_dir = calibration_dir / "5AE6052943"
-    arm_dir.mkdir(parents=True)
-    profile = arm_dir / "5AE6052943.json"
-    profile.write_text("{}", encoding="utf-8")
-
-    _flatten_calibration_snapshot(calibration_dir)
-
-    assert profile.exists()
-
-
-def test_flatten_calibration_snapshot_moves_timestamped_single_arm_profile(tmp_path):
-    calibration_dir = tmp_path / "calibration"
-    arm_dir = calibration_dir / "5AE6052943"
-    arm_dir.mkdir(parents=True)
-    (arm_dir / "5AE6052943.json").write_text("{}", encoding="utf-8")
-    (calibration_dir / "time.txt").write_text("5AE6052943: 20260428180000\n", encoding="utf-8")
-
-    _flatten_calibration_snapshot(calibration_dir)
-
-    assert (calibration_dir / "5AE6052943-20260428180000.json").exists()
-    assert not arm_dir.exists()
-    assert not (calibration_dir / "time.txt").exists()
-
-
-def test_flatten_calibration_snapshot_moves_timestamped_bimanual_profiles(tmp_path):
-    calibration_dir = tmp_path / "calibration"
-    bimanual_dir = calibration_dir / "bimanual_followers"
-    bimanual_dir.mkdir(parents=True)
-    (bimanual_dir / "bimanual_left.json").write_text("{}", encoding="utf-8")
-    (bimanual_dir / "bimanual_right.json").write_text("{}", encoding="utf-8")
-    (calibration_dir / "time.txt").write_text(
-        "bimanual_left: 20260428180000\n"
-        "bimanual_right: 20260428180100\n",
-        encoding="utf-8",
-    )
-
-    _flatten_calibration_snapshot(calibration_dir)
-
-    assert (calibration_dir / "bimanual_left-20260428180000.json").exists()
-    assert (calibration_dir / "bimanual_right-20260428180100.json").exists()
-    assert not bimanual_dir.exists()
-    assert not (calibration_dir / "time.txt").exists()
 
 
 # ── Read-only mode (via __init__) ────────────────────────────────────

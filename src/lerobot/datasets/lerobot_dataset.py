@@ -45,35 +45,17 @@ logger = logging.getLogger(__name__)
 
 def _flatten_calibration_snapshot(calibration_dir: Path) -> None:
     time_fpath = calibration_dir / "time.txt"
-    if not time_fpath.exists():
-        return
     for line in time_fpath.read_text().splitlines():
-        if not line.strip():
-            continue
         arm_name, sep, timestamp = line.partition(":")
         if not sep:
             raise ValueError(f"Invalid calibration timestamp entry: {line}")
         arm_name = arm_name.strip()
         timestamp = timestamp.strip()
-        source = _find_calibration_snapshot_file(calibration_dir, arm_name)
+        source = calibration_dir / arm_name / f"{arm_name}.json"
         target = calibration_dir / f"{arm_name}-{timestamp}.json"
         source.rename(target)
+        shutil.rmtree(calibration_dir / arm_name)
     time_fpath.unlink()
-    for path in calibration_dir.iterdir():
-        if path.is_dir() and not any(path.iterdir()):
-            path.rmdir()
-
-
-def _find_calibration_snapshot_file(calibration_dir: Path, arm_name: str) -> Path:
-    candidates = [
-        calibration_dir / arm_name / f"{arm_name}.json",
-        calibration_dir / f"{arm_name}.json",
-        *sorted(calibration_dir.glob(f"*/{arm_name}.json")),
-    ]
-    for candidate in candidates:
-        if candidate.is_file():
-            return candidate
-    raise FileNotFoundError(f"Calibration timestamp references missing profile: {arm_name}")
 
 
 class LeRobotDataset(torch.utils.data.Dataset):
