@@ -19,6 +19,7 @@ from typing import Any
 
 import draccus
 
+from lerobot.calibration_timestamp import record_calibration_timestamp
 from lerobot.motors.motors_bus import MotorCalibration
 from lerobot.types import RobotAction
 from lerobot.utils.constants import HF_LEROBOT_CALIBRATION, TELEOPERATORS
@@ -167,6 +168,7 @@ class Teleoperator(abc.ABC):
         fpath = self.calibration_fpath if fpath is None else fpath
         with open(fpath, "w") as f, draccus.config_type("json"):
             draccus.dump(self.calibration, f, indent=4)
+        record_calibration_timestamp(fpath)
 
     @abc.abstractmethod
     def configure(self) -> None:
