@@ -15,6 +15,7 @@
 # limitations under the License.
 import dataclasses
 import logging
+import os
 import time
 from contextlib import nullcontext
 from pprint import pformat
@@ -54,6 +55,19 @@ from lerobot.utils.utils import (
     init_logging,
     inside_slurm,
 )
+
+LOSS_FILE_PATH = "/root/evohelper/loss.txt"
+
+
+def _reset_loss_file() -> None:
+    os.makedirs(os.path.dirname(LOSS_FILE_PATH), exist_ok=True)
+    open(LOSS_FILE_PATH, "w", encoding="utf-8").close()
+
+
+def _append_loss(loss_value: float) -> None:
+    os.makedirs(os.path.dirname(LOSS_FILE_PATH), exist_ok=True)
+    with open(LOSS_FILE_PATH, "a", encoding="utf-8") as loss_file:
+        loss_file.write(f"{loss_value}\n")
 
 
 def update_policy(
@@ -144,6 +158,8 @@ def update_policy(
         accelerator.unwrap_model(policy, keep_fp32_wrapper=True).update()
 
     train_metrics.loss = loss.item()
+    if accelerator.is_main_process:
+        _append_loss(train_metrics.loss)
     train_metrics.grad_norm = grad_norm.item()
     train_metrics.lr = optimizer.param_groups[0]["lr"]
     train_metrics.update_s = time.perf_counter() - start_time
@@ -191,6 +207,8 @@ def train(cfg: TrainPipelineConfig, accelerator: Accelerator | None = None):
     # Determine if this is the main process (for logging and checkpointing)
     # When using accelerate, only the main process should log to avoid duplicate outputs
     is_main_process = accelerator.is_main_process
+    if is_main_process:
+        _reset_loss_file()
 
     # Only log on main process
     if is_main_process:
