@@ -12,7 +12,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 
-DEFAULT_ENDPOINT = "https://oss-cn-hangzhou-internal.aliyuncs.com"
+DEFAULT_ENDPOINT = "https://oss-cn-hangzhou.aliyuncs.com"
 DEFAULT_OSS_URI_TEMPLATE = "oss://evo-data/all_usr_dataset/%s/%s/"
 DEFAULT_TARGET_DIR_TEMPLATE = "/root/autodl-tmp/%s/datasets"
 DEFAULT_PROGRESS_FILE = "/root/evohelper/download.json"
@@ -146,30 +146,22 @@ def main(argv: list[str] | None = None) -> int:
     download_parser.add_argument("download_action", nargs="?", choices=["check"])
     download_parser.add_argument("--usrname", required=True)
     download_parser.add_argument("--dataset", required=True)
-    download_parser.add_argument(
-        "--endpoint",
-        default=os.environ.get("OSS_ENDPOINT", DEFAULT_ENDPOINT),
-    )
-    download_parser.add_argument(
-        "--progress-file",
-        default=os.environ.get("EVO_DOWNLOAD_PROGRESS_FILE", DEFAULT_PROGRESS_FILE),
-    )
 
     args = parser.parse_args(argv)
 
     if args.command == "download" and args.download_action == "check":
-        print(json.dumps(_read_progress(args.progress_file), ensure_ascii=False))
+        print(json.dumps(_read_progress(DEFAULT_PROGRESS_FILE), ensure_ascii=False))
         return 0
 
     if args.command == "download":
-        downloader = OSSDatasetDownloader(args.endpoint, progress_file=args.progress_file)
+        downloader = OSSDatasetDownloader(DEFAULT_ENDPOINT)
         try:
             progress = downloader.download_data(
                 _dataset_oss_uri(args.usrname, args.dataset),
                 _dataset_target_dir(args.usrname),
             )
         except Exception as exc:
-            _write_failed_progress(args.progress_file, downloader.get_download_progress(), exc)
+            _write_failed_progress(DEFAULT_PROGRESS_FILE, downloader.get_download_progress(), exc)
             raise
         print(json.dumps(progress, ensure_ascii=False))
         return 0
